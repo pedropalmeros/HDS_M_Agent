@@ -1,0 +1,193 @@
+//  created:    2015/11/05
+//  filename:   SimpleFleet.h
+//
+//  author:     Guillaume Sanahuja
+//              Copyright Heudiasyc UMR UTC/CNRS 7253
+//
+//  version:    $Id: $
+//
+//  purpose:    demo fleet
+//
+//
+/*********************************************************************/
+
+#ifndef MULTIAGENT_CORE_H
+#define MULTIAGENT_CORE_H
+
+#include <UavStateMachine.h>
+
+namespace flair {
+    namespace core {
+        class FrameworkManager;
+        class UdpSocket;
+        class AhrsData;
+    }
+    namespace filter {
+        //class TrajectoryGenerator2DCircle;
+        class Controller1Class;			
+        class Controller2Class;			
+        class Controller3Class;			
+    }
+		namespace meta {
+        class MetaVrpnObject;
+    }
+    namespace gui {
+        class DoubleSpinBox;
+        class GridLayout;
+        class tabWidget;
+        class LayoutPosition;
+        class Vector3DSpinBox;
+        class Tab; 
+    }
+}
+
+
+class MultiAgentCore : public flair::meta::UavStateMachine {
+    public:
+        MultiAgentCore(std::string broadcast,flair::sensor::TargetController *controller);
+        ~MultiAgentCore();
+
+    private:
+        enum class BehaviourMode_t {
+            Default,
+            Behaviour1, // Home;
+            Behaviour2, // Posiciones -> Usuario
+            Behaviour3, // Posiciones -> Consenso.
+            Behaviour4, // ------------------
+        };
+
+//        BehaviourMode_t orientation_state;
+        BehaviourMode_t behaviourMode;
+        bool vrpnLost;
+
+
+		// Functions Prototypes 
+			void VrpnPositionHold(void);//flight mode
+			void StartCircle(void);
+			void StopCircle(void);
+			void ExtraTakeOff(void);
+			void ExtraSecurityCheck(void);
+			void ExtraCheckJoystick(void);
+			//const flair::core::AhrsData *GetOrientation(void) const;
+			//void AltitudeValues(float &z,float &dz) const;
+			//void PositionValues(flair::core::Vector2Df &pos_error,flair::core::Vector2Df &vel_error,float &yaw_ref);
+			//const flair::core::AhrsData *GetReferenceOrientation(void);
+			void SignalEvent(Event_t event);
+			void CheckMessages(void);
+			void ExtraCheckPushButton(void);
+			void Behaviour1(void);
+			void Behaviour2(void);
+			void Behaviour3(void);
+			void Behaviour4(void);
+			void StatesDrones(void);
+			void LagrangianMatrix(void);
+			void Ch2Controller1Fnc(void);		// Home position
+			void Ch2Controller2Fnc(void);		// Position Set by User
+			void Ch2Controller3Fnc(void);		// Consensus
+			void Ch2Controller4Fnc(void);		// Not defined
+			void ComputeCustomTorques(flair::core::Euler &torques);
+			void VectorRelDist(void);
+			void PrintVectorRelDist(void);
+			   //PrintVectorRelDist
+        
+        
+        std::string s;
+        std::string Name_Drone;
+        std::string *ptrName_Drone = &Name_Drone;
+        
+        flair::gui::PushButton *StartBehaviour1Button, *StartBehaviour2Button, *StartBehaviour3Button, *StartBehaviour4Button;
+        flair::gui::PushButton *LineFormationButton, *TriangleFormationButton, *UserFormationButton;
+        //flair::filter::Pid *u_x, *u_y;
+        flair::core::Vector2Df posHold;
+        flair::core::Vector3Df PositionAllDrones[3];
+        flair::core::Vector3Df *PointerPositionAllDrones[3];
+        
+        //To separate the states and to generate
+        // x = [x0 x1 x2]^T
+        // y = [y0 y1 y2]^T
+        // z = [z0 z1 z2]z^T
+        float StateX[3], StateY[3], StateZ[3];
+        float *ptrStateX = &StateX[0];
+        float *ptrStateY = &StateY[0];
+        float *ptrStateZ = &StateZ[0]; 
+        
+        // Laplacian => Communication Matrix
+        int Laplacian[3][3] = {{1,1,0},{0,1,1},{1,0,1}};
+        int *PtrLaplacian = &Laplacian[0][0];
+        int Laplacian1[3] = {1,1,0};
+        int Laplacian2[3] = {0,1,1};
+        int Laplacian3[3] = {1,0,1};
+        
+        float DistRelX[3],DistRelY[3];
+        float *ptrDistRelX = &DistRelX[0];
+        float *ptrDistRelY = &DistRelY[0];
+        
+        int IdDrone;
+        int *ptrIdDrone = &IdDrone;
+        
+        
+        float yawHold;
+        flair::core::UdpSocket *message;
+        flair::core::Time posWait;
+        
+        flair::gui::Tab *LateralTab01, *LateralTab02, *LateralTab03;
+		flair::gui::Tab *GainsDr0Pos, *GainsDr1Pos, *GainsDr2Pos;
+
+
+       // flair::filter::TrajectoryGenerator2DCircle *circle;
+        //flair::filter::Controller1Class *Attitude;
+        flair::filter::Controller2Class *Home,*UserPosition;
+        flair::filter::Controller3Class *Consensus;
+        
+       // flair::gui::DoubleSpinBox *xCircleCenter,*yCircleCenter,*yDisplacement;
+        flair::core::AhrsData *customReferenceOrientation,*customOrientation;
+		flair::meta::MetaVrpnObject *uavVrpn, *ArrayDrones[3];
+		
+//		flair::gui::DoubleSpinBox *Dr12Dr2x, *Dr12Dr2y;
+//		flair::gui::DoubleSpinBox *Dr22Dr3x, *Dr22Dr3y;
+//		flair::gui::DoubleSpinBox *Dr32Dr1x, *Dr32Dr1y;
+		flair::gui::DoubleSpinBox *RelDistDrX[3], *RelDistDrY[3];
+		float RelDistx[3], RelDisty[3];
+		float *ptrRelDistx = &RelDistx[0];
+		float *ptrRelDisty = &RelDisty[0];
+		
+/*		flair::gui::DoubleSpinBox *kp_roll0, *kd_roll0, *kp_pitch0, *kd_pitch0, *kp_yaw0, *kd_yaw0;
+		flair::gui::DoubleSpinBox *kp_roll1, *kd_roll1, *kp_pitch1, *kd_pitch1, *kp_yaw1, *kd_yaw1;
+		flair::gui::DoubleSpinBox *kp_roll2, *kd_roll2, *kp_pitch2, *kd_pitch2, *kp_yaw2, *kd_yaw2;
+*/		
+		flair::gui::DoubleSpinBox *pdAttitudeGainsDr0[6], *pdAttitudeGainsDr1[6], *pdAttitudeGainsDr2[6];
+		
+		float pdAttitudeGains0[6]; float *pdAG0 = &pdAttitudeGains0[0];
+		float pdAttitudeGains1[6]; float *pdAG1 = &pdAttitudeGains1[0];
+		float pdAttitudeGains2[6]; float *pdAG2 = &pdAttitudeGains2[0];
+		
+		flair::gui::DoubleSpinBox *GainsAttitude[6];
+		
+		
+/*		flair::gui::DoubleSpinBox *a10, *a20, *a30, *a40, *a50, *kp_x0, *kd_x0, *kp_y0, *kd_y0;
+		flair::gui::DoubleSpinBox *a11, *a21, *a31, *a41, *a51, *kp_x1, *kd_x1, *kp_y1, *kd_y1;
+		flair::gui::DoubleSpinBox *a12, *a22, *a32, *a42, *a52, *kp_x2, *kd_x2, *kp_y2, *kd_y2;
+*/		flair::gui::DoubleSpinBox *pdPositionGainsDr0[9], *pdPositionGainsDr1[9], *pdPositionGainsDr2[9];
+
+		float pdPositionGains0[9]; float *pdPG0 = &pdPositionGains0[0];
+		float pdPositionGains1[9]; float *pdPG1 = &pdPositionGains1[0];
+		float pdPositionGains2[9]; float *pdPG2 = &pdPositionGains2[0];
+		
+//		flair::gui::DoubleSpinBox *x0H, *x1H, *x2H, *y0H, *y1H, *y2H, *x0U, *x1U, *x2U, *y0U, *y1U, *y2U;
+		
+		flair::gui::DoubleSpinBox *homePositionDr0[2], *homePositionDr1[2], *homePositionDr2[2];
+		flair::gui::DoubleSpinBox *userPositionDr0[2], *userPositionDr1[2], *userPositionDr2[2];
+		
+		float homePosition0[2], homePosition1[2], homePosition2[2]; 
+		float userPosition0[2], userPosition1[2], userPosition2[2];
+		float *ptrhomePosition0 = &homePosition0[0];
+		float *ptrhomePosition1 = &homePosition1[0];
+		float *ptrhomePosition2 = &homePosition2[0];
+		float *ptruserPosition0 = &userPosition0[0];
+		float *ptruserPosition1 = &userPosition1[0];
+		float *ptruserPosition2 = &userPosition2[0];
+	
+		
+};
+
+#endif // MULTIAGENT_CORE_H

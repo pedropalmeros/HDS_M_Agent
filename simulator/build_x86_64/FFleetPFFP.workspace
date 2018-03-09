@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeLite_Workspace Name="FFleetPFFP">
+	<Project Name="FFleetPFFP_nrt" Path="FFleetPFFP_nrt.project" Active="No"/>
+	<Project Name="FFleetPFFP_rt" Path="FFleetPFFP_rt.project" Active="No"/>
+	<BuildMatrix>
+		<WorkspaceConfiguration Name="NoConfig" Selected="yes">
+			<Project Name="rebuild_cache" ConfigName="NoConfig"/>
+			<Project Name="edit_cache" ConfigName="NoConfig"/>
+			<Project Name="FFleetPFFP_nrt" ConfigName="NoConfig"/>
+			<Project Name="FFleetPFFP_rt" ConfigName="NoConfig"/>
+		</WorkspaceConfiguration>
+	</BuildMatrix>
+</CodeLite_Workspace>

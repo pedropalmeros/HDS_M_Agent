@@ -1,0 +1,13 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/FFormation07_17_11_2017_nrt.dir/src/main.cpp.o"
+  "CMakeFiles/FFormation07_17_11_2017_nrt.dir/src/ClassFlightFormation.cpp.o"
+  "CMakeFiles/FFormation07_17_11_2017_nrt.dir/src/Controller5_1Class.cpp.o"
+  "CMakeFiles/FFormation07_17_11_2017_nrt.dir/src/Controller4_1Class.cpp.o"
+  "bin/FFormation07_17_11_2017_nrt.pdb"
+  "bin/FFormation07_17_11_2017_nrt"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/FFormation07_17_11_2017_nrt.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

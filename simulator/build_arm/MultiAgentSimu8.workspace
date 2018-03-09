@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeLite_Workspace Name="MultiAgentSimu8">
+	<Project Name="MultiAgentSimu8_nrt" Path="MultiAgentSimu8_nrt.project" Active="No"/>
+	<Project Name="MultiAgentSimu8_rt" Path="MultiAgentSimu8_rt.project" Active="No"/>
+	<BuildMatrix>
+		<WorkspaceConfiguration Name="NoConfig" Selected="yes">
+			<Project Name="rebuild_cache" ConfigName="NoConfig"/>
+			<Project Name="edit_cache" ConfigName="NoConfig"/>
+			<Project Name="MultiAgentSimu8_nrt" ConfigName="NoConfig"/>
+			<Project Name="MultiAgentSimu8_rt" ConfigName="NoConfig"/>
+		</WorkspaceConfiguration>
+	</BuildMatrix>
+</CodeLite_Workspace>

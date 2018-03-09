@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeLite_Workspace Name="SimpleFleet_simulator">
+	<Project Name="SimpleFleet_simulator_nrt" Path="SimpleFleet_simulator_nrt.project" Active="No"/>
+	<Project Name="SimpleFleet_simulator_rt" Path="SimpleFleet_simulator_rt.project" Active="No"/>
+	<BuildMatrix>
+		<WorkspaceConfiguration Name="NoConfig" Selected="yes">
+			<Project Name="rebuild_cache" ConfigName="NoConfig"/>
+			<Project Name="edit_cache" ConfigName="NoConfig"/>
+			<Project Name="SimpleFleet_simulator_nrt" ConfigName="NoConfig"/>
+			<Project Name="SimpleFleet_simulator_rt" ConfigName="NoConfig"/>
+		</WorkspaceConfiguration>
+	</BuildMatrix>
+</CodeLite_Workspace>

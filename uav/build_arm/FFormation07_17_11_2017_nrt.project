@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeLite_Project Name="FFormation07_17_11_2017_nrt" InternalType="">
+	<VirtualDirectory Name="src">
+		<File Name="../src/ClassFlightFormation.cpp"/>
+		<File Name="../src/Controller4_1Class.cpp"/>
+		<File Name="../src/Controller5_1Class.cpp"/>
+		<File Name="../src/main.cpp"/>
+	</VirtualDirectory>
+	<VirtualDirectory Name="include">
+		<File Name="../src/ClassFlightFormation.h"/>
+		<File Name="../src/Controller4_1Class.h"/>
+		<File Name="../src/Controller5_1Class.h"/>
+	</VirtualDirectory>
+	<Settings Type="Executable">
+		<Configuration Name="NoConfig" CompilerType="gnu g++" DebuggerType="GNU gdb debugger" Type="Executable" BuildCmpWithGlobalSettings="append" BuildLnkWithGlobalSettings="append" BuildResWithGlobalSettings="append">
+			<Compiler Options="-g" Required="yes" PreCompiledHeader="">
+				<IncludePath Value="."/>
+			</Compiler>
+			<Linker Options="" Required="yes"/>
+			<ResourceCompiler Options="" Required="no"/>
+			<General OutputFile="/home/ppalmeros/flair/ppalmeros/FFormation_07/uav/build_arm/bin/$(ProjectName)" IntermediateDirectory="./" Command="./$(ProjectName)" CommandArguments="" WorkingDirectory="/home/ppalmeros/flair/ppalmeros/FFormation_07/uav/build_arm/bin" PauseExecWhenProcTerminates="yes"/>
+			<Debugger IsRemote="no" RemoteHostName="" RemoteHostPort="" DebuggerPath="">
+				<PostConnectCommands/>
+				<StartupCommands/>
+			</Debugger>
+			<PreBuild/>
+			<PostBuild/>
+			<CustomBuild Enabled="yes">
+				<Target Name="rebuild_cache">/usr/bin/make -j 8 rebuild_cache</Target>
+				<Target Name="edit_cache">/usr/bin/make -j 8 edit_cache</Target>
+				<RebuildCommand>/usr/bin/make -j 8 clean &amp;&amp; /usr/bin/make -j 8</RebuildCommand>
+				<CleanCommand>/usr/bin/make -j 8 clean</CleanCommand>
+				<BuildCommand>/usr/bin/make -j 8</BuildCommand>
+				<SingleFileCommand>/usr/bin/make -f$(ProjectPath)/Makefile $(CurrentFileName).cpp.o</SingleFileCommand>
+				<PreprocessFileCommand/>
+				<WorkingDirectory>$(WorkspacePath)</WorkingDirectory>
+				<RebuildCommand>/usr/bin/make -j 8 clean &amp;&amp; /usr/bin/make -j 8</RebuildCommand>
+				<CleanCommand>/usr/bin/make -j 8 clean</CleanCommand>
+				<BuildCommand>/usr/bin/make -j 8</BuildCommand>
+				<SingleFileCommand>/usr/bin/make -f$(ProjectPath)/Makefile $(CurrentFileName).cpp.o</SingleFileCommand>
+				<PreprocessFileCommand/>
+				<WorkingDirectory>$(WorkspacePath)</WorkingDirectory>
+			</CustomBuild>
+			<Completion EnableCpp11="yes" EnableCpp14="yes">
+				<SearchPaths>/opt/robomap3/1.7.3/armv7a-neon/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/include/libxml2
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/include/opencv
+/home/ppalmeros/flair/flair-dev/include/FlairCore
+/home/ppalmeros/flair/flair-hds/dev/include/VisionFilter
+/home/ppalmeros/flair/flair-dev/include/FlairSensorActuator
+/home/ppalmeros/flair/flair-dev/include/FlairFilter
+/home/ppalmeros/flair/flair-dev/include/FlairMeta
+/opt/ros/indigo/include
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/include/c++/4.9.1
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/include/c++/4.9.1/arm-poky-linux-gnueabi
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/include/c++/4.9.1/backward
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/x86_64-pokysdk-linux/usr/lib/arm-poky-linux-gnueabi/gcc/arm-poky-linux-gnueabi/4.9.1/include
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/x86_64-pokysdk-linux/usr/lib/arm-poky-linux-gnueabi/gcc/arm-poky-linux-gnueabi/4.9.1/include-fixed
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/include
+</SearchPaths>
+				<SearchPaths>/opt/robomap3/1.7.3/armv7a-neon/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/include/libxml2
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/include/opencv
+/home/ppalmeros/flair/flair-dev/include/FlairCore
+/home/ppalmeros/flair/flair-hds/dev/include/VisionFilter
+/home/ppalmeros/flair/flair-dev/include/FlairSensorActuator
+/home/ppalmeros/flair/flair-dev/include/FlairFilter
+/home/ppalmeros/flair/flair-dev/include/FlairMeta
+/opt/ros/indigo/include
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/include/c++/4.9.1
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/include/c++/4.9.1/arm-poky-linux-gnueabi
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/include/c++/4.9.1/backward
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/x86_64-pokysdk-linux/usr/lib/arm-poky-linux-gnueabi/gcc/arm-poky-linux-gnueabi/4.9.1/include
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/x86_64-pokysdk-linux/usr/lib/arm-poky-linux-gnueabi/gcc/arm-poky-linux-gnueabi/4.9.1/include-fixed
+/opt/robomap3/1.7.3/armv7a-neon/sysroots/armv7a-vfp-neon-poky-linux-gnueabi/usr/include
+</SearchPaths>
+			</Completion>
+			<AdditionalRules>
+				<CustomPostBuild/>
+				<CustomPreBuild/>
+			</AdditionalRules>
+		</Configuration>
+		<GlobalSettings>
+			<Compiler Options="">
+				<IncludePath Value="."/>
+			</Compiler>
+			<Linker Options="">
+				<LibraryPath Value="."/>
+			</Linker>
+			<ResourceCompiler Options=""/>
+		</GlobalSettings>
+	</Settings>
+</CodeLite_Project>

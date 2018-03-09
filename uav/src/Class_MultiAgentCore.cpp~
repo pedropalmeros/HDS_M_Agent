@@ -1,0 +1,819 @@
+//  created:    2015/11/05
+//  filename:   SimpleFleet.cpp
+//
+//  author:     Guillaume Sanahuja
+//              Copyright Heudiasyc UMR UTC/CNRS 7253
+//
+//  version:    $Id: $
+//
+//  purpose:    demo fleet
+//
+//
+/*********************************************************************/
+
+#include "Class_MultiAgentCore.h"
+#include "Controller1Class.h"
+#include "Controller2Class.h"
+#include "Controller3Class.h"
+#include <TargetController.h>
+#include <Uav.h>
+#include <GridLayout.h>
+#include <PushButton.h>
+#include <DataPlot1D.h>
+#include <DataPlot2D.h>
+#include <Ahrs.h>
+#include <AhrsData.h> 
+#include <MetaUsRangeFinder.h>
+#include <MetaDualShock3.h>
+#include <FrameworkManager.h>
+#include <VrpnClient.h>
+#include <MetaVrpnObject.h>
+#include <TrajectoryGenerator2DCircle.h>
+#include <Vector3D.h>
+#include <Vector2D.h>
+#include <PidThrust.h>
+#include <Euler.h>
+#include <cvmatrix.h>
+#include <AhrsData.h>
+#include <Ahrs.h>
+#include <DoubleSpinBox.h>
+#include <stdio.h>
+#include <cmath>
+#include <Tab.h>
+#include <Pid.h>
+#include <UdpSocket.h>
+#include <string.h>
+#include <iostream> 
+#include <GroupBox.h>
+#include <sstream>
+#include <UdpSocket.h>
+#include <DoubleSpinBox.h>
+#include <Vector3DSpinBox.h>
+#include <SpinBox.h>
+#include <TabWidget.h>
+
+#define PI ((float)3.14159265358979323846)
+#define NoDrones 3
+
+using namespace std;
+using namespace flair::core;
+using namespace flair::gui;
+using namespace flair::sensor;
+using namespace flair::filter;
+using namespace flair::meta;
+
+
+MultiAgentCore::MultiAgentCore(string broadcast,TargetController *controller): UavStateMachine(controller), behaviourMode(BehaviourMode_t::Default), vrpnLost(false) {
+    Uav* uav=GetUav();
+	
+	//Optitrack	
+	VrpnClient* vrpnclient=new VrpnClient("vrpn", uav->GetDefaultVrpnAddress(),80);
+	uavVrpn = new MetaVrpnObject(uav->ObjectName());
+	getFrameworkManager()->AddDeviceToLog(uavVrpn);
+	uav->GetAhrs()->YawPlot()->AddCurve(uavVrpn->State()->Element(2),DataPlot::Green);
+
+	std::cout << "hola\n";
+	std::cout << uav->ObjectName() << std::endl;
+	Name_Drone = uav->ObjectName();
+	std::cout << "El nombre del Drone es: " << Name_Drone << std::endl;	
+	switch(Name_Drone[3]){
+		case '0':
+		{
+			*ptrIdDrone = 0;
+			cout << "El Id del Drone es: " << *ptrIdDrone << endl;
+			break;
+		}		
+		case '1':
+		{
+			*ptrIdDrone = 1;
+			cout << "El Id del Drone es: " << *ptrIdDrone << endl;			
+			break;		
+		}
+		case '2':
+		{
+			*ptrIdDrone = 2;
+			cout << "El Id del Drone es: " << *ptrIdDrone << endl;
+			break;
+		}
+	}
+	
+	
+	
+	// En esta sección se crean los demás drones y se les asigna un nombre
+	for(int i=0;i<3;i++) {
+		stringstream s;
+		s << "x8_" << i;
+		//cout << s << endl;
+		cout << s.str();   // Imprime la cadena del nuevo nombre del drone que está creando 
+		if(s.str()==uav->ObjectName())
+		{
+			ArrayDrones[i] = uavVrpn;
+			cout << " => if - Se ha creado el drone no. " << i << endl;;
+		}
+		else
+		{
+			ArrayDrones[i] = new MetaVrpnObject(s.str());
+			cout << " => else - Se ha creado el drone no. " << i << endl;
+		}
+		cout << i << endl;
+    }
+	cout << "Fin de For";
+   	
+	vrpnclient->Start();
+	
+	StartBehaviour1Button = new PushButton(GetButtonsLayout() -> NewRow(), "Home");
+	StartBehaviour2Button = new PushButton(GetButtonsLayout() -> LastRowLastCol(), "Independet Positions");
+	StartBehaviour3Button = new PushButton(GetButtonsLayout() -> NewRow(), "Consensus");
+	StartBehaviour4Button = new PushButton(GetButtonsLayout() -> LastRowLastCol(), "Change to Behaviour 4");
+	
+	
+ 
+     
+/*    Dr22Dr3x = new DoubleSpinBox(vrpnclient->GetLayout()->NewRow(),"Distance X 2 -> 3","m",-3,3,0.01,1,0);
+    Dr22Dr3y = new DoubleSpinBox(vrpnclient->GetLayout()->LastRowLastCol(),"Distance Y 2 -> 3","m",-3,3,0.01,1,0);
+    
+    Dr32Dr1x = new DoubleSpinBox(vrpnclient->GetLayout()->NewRow(),"Distance X 3 -> 1","m",-3,3,0.01,1,0);
+    Dr32Dr1y = new DoubleSpinBox(vrpnclient->GetLayout()->LastRowLastCol(),"Distance Y 3 -> 1","m",-3,3,0.01,1,0); */ 
+ /* circle=new TrajectoryGenerator2DCircle(vrpnclient->GetLayout()->NewRow(),"circle");
+    uavVrpn->xPlot()->AddCurve(circle->Matrix()->Element(0,0),0,0,255);
+    uavVrpn->yPlot()->AddCurve(circle->Matrix()->Element(0,1),0,0,255);
+    uavVrpn->VxPlot()->AddCurve(circle->Matrix()->Element(1,0),0,0,255);
+    uavVrpn->VyPlot()->AddCurve(circle->Matrix()->Element(1,1),0,0,255);*/
+   
+    Home = new Controller2Class(setupLawTab -> At(1,0)," Attitude");
+    UserPosition = new Controller2Class(setupLawTab -> At(1,0)," Position");
+    Consensus = new Controller3Class(setupLawTab -> At(2,0),"Consensus");
+    
+    Home -> UseDefaultPlot(MyTab->NewRow());
+    UserPosition -> UseDefaultPlot(MyTab->NewRow());
+    Consensus -> UseDefaultPlot(MyTab->NewRow());
+
+/*  xCircleCenter=new DoubleSpinBox(vrpnclient->GetLayout()->NewRow(),"x circle center"," m",-5,5,0.1,1,0);
+    yCircleCenter=new DoubleSpinBox(vrpnclient->GetLayout()->NewRow(),"y circle center"," m",-5,5,0.1,1,0);
+    yDisplacement=new DoubleSpinBox(vrpnclient->GetLayout()->NewRow(),"y displacement"," m",0,2,0.1,1,0);
+
+    //parent->AddDeviceToLog(Uz());
+
+    //u_x=new Pid(setupLawTab->At(1,0),"u_x");
+    //u_x->UseDefaultPlot(graphLawTab->NewRow());
+    //u_y=new Pid(setupLawTab->At(1,1),"u_y");
+    //u_y->UseDefaultPlot(graphLawTab->LastRowLastCol());*/
+
+    message=new UdpSocket(uav,"Message",broadcast,true);
+
+    customReferenceOrientation= new AhrsData(this,"reference");
+    uav->GetAhrs()->AddPlot(customReferenceOrientation,DataPlot::Yellow);
+    AddDataToControlLawLog(customReferenceOrientation);
+
+    customOrientation=new AhrsData(this,"orientation");
+    
+    getFrameworkManager()->AddDeviceToLog(Home);
+    getFrameworkManager()->AddDeviceToLog(UserPosition);
+    
+   //MyTab = new Tab(getFrameworkManager()->GetTabWidget(), "GraphesPedro");
+  /*****************************************************************************************
+   * 				Position Tab CONTROLLER													*	
+   * **************************************************************************************/
+	Tab *PositionTab = new Tab(getFrameworkManager()->GetTabWidget(),"Position Control");
+	TabWidget *LateralTabs = new TabWidget(PositionTab->NewRow(),"PositionControl");
+	GainsDr0Pos = new Tab(LateralTabs,"Gains for x4_0");
+	GainsDr1Pos = new Tab(LateralTabs,"Gains for x4_1"); 
+	GainsDr2Pos = new Tab(LateralTabs,"Gains for x4_2");
+	
+		/************************************************************************************
+		 * 				Ganancias de Orientación y Posición									*
+		 * *********************************************************************************/
+		 GroupBox* Attitude0 = new GroupBox(GainsDr1Pos->NewRow(),"Attitude x4_0");
+			pdAttitudeGainsDr0[0] = new DoubleSpinBox(Attitude0->NewRow(),"Kp_roll:",0,10,0.001,4);
+			pdAttitudeGainsDr0[1] = new DoubleSpinBox(Attitude0->LastRowLastCol(),"Kd_roll:",0,10,0.001,4);
+			
+			pdAttitudeGainsDr0[2] = new DoubleSpinBox(Attitude0->NewRow(),"Kp_pitch:",0,10,0.001,4);
+			pdAttitudeGainsDr0[3] = new DoubleSpinBox(Attitude0->LastRowLastCol(),"Kd_pitch:",0,10,0.001,4);
+
+			pdAttitudeGainsDr0[4] = new DoubleSpinBox(Attitude0->NewRow(),"Kp_yaw:",0,10,0.001,4);
+			pdAttitudeGainsDr0[5] = new DoubleSpinBox(Attitude0->LastRowLastCol(),"Kd_yaw:",0,10,0.001,4);
+			
+			for(int i = 0; i < 6; i++ ){
+				*(pdAG0+i) = pdAttitudeGainsDr0[i]->Value();
+			}
+		 
+		 GroupBox* Attitude1 = new GroupBox(GainsDr1Pos->LastRowLastCol(),"Attitude x4_1");
+			pdAttitudeGainsDr1[0] = new DoubleSpinBox(Attitude1->NewRow(),"Kp_roll:",0,10,0.001,4);
+			pdAttitudeGainsDr1[1] = new DoubleSpinBox(Attitude1->LastRowLastCol(),"Kd_roll:",0,10,0.001,4);
+
+			pdAttitudeGainsDr1[2] = new DoubleSpinBox(Attitude1->NewRow(),"Kp_pitch:",0,10,0.001,4);
+			pdAttitudeGainsDr1[3] = new DoubleSpinBox(Attitude1->LastRowLastCol(),"Kd_pitch:",0,10,0.001,4);
+
+			pdAttitudeGainsDr1[4] = new DoubleSpinBox(Attitude1->NewRow(),"Kp_yaw:",0,10,0.001,4);
+			pdAttitudeGainsDr1[5] = new DoubleSpinBox(Attitude1->LastRowLastCol(),"Kd_yaw:",0,10,0.001,4);
+			
+			for(int i = 0; i < 6; i++){
+				*(pdAG1+i) = pdAttitudeGainsDr1[i]->Value();
+			}
+				 
+		 GroupBox* Attitude2 = new GroupBox(GainsDr1Pos->LastRowLastCol(),"Attitude x4_2");
+			pdAttitudeGainsDr2[0] = new DoubleSpinBox(Attitude2->NewRow(),"Kp_roll:",0,10,0.001,4);
+			pdAttitudeGainsDr2[1] = new DoubleSpinBox(Attitude2->LastRowLastCol(),"Kd_roll:",0,10,0.001,4);
+
+			pdAttitudeGainsDr2[2] = new DoubleSpinBox(Attitude2->NewRow(),"Kp_pitch:",0,10,0.001,4);
+			pdAttitudeGainsDr2[3] = new DoubleSpinBox(Attitude2->LastRowLastCol(),"Kd_pitch:",0,10,0.001,4);
+
+			pdAttitudeGainsDr2[4] = new DoubleSpinBox(Attitude2->NewRow(),"Kp_yaw:",0,10,0.001,4);
+			pdAttitudeGainsDr2[5] = new DoubleSpinBox(Attitude2->LastRowLastCol(),"Kd_yaw:",0,10,0.001,4);
+
+			for(int i = 0; i < 6; i++){
+				*(pdAG2+i) = pdAttitudeGainsDr2[i]->Value();
+			}			
+			
+		 GroupBox* Position0 = new GroupBox(GainsDr1Pos->NewRow(),"Pos Gains x4_0");
+			pdPositionGainsDr0[0] = new  	DoubleSpinBox(Position0->NewRow(),"a1:",0,10,0.001,4);
+			pdPositionGainsDr0[1] = new	DoubleSpinBox(Position0->LastRowLastCol(),"a2:",0,10,0.001,4);
+			pdPositionGainsDr0[2] = new	DoubleSpinBox(Position0->NewRow(),"a3:",0,10,0.001,4);
+			pdPositionGainsDr0[3] = new	DoubleSpinBox(Position0->LastRowLastCol(),"a4:",0,10,0.001,4);
+			pdPositionGainsDr0[4] = new	DoubleSpinBox(Position0->NewRow(),"a5:",0,10,0.001,4);
+			pdPositionGainsDr0[5] = new DoubleSpinBox(Position0->NewRow(),"kp_x:",0,10,0.001,4);
+			pdPositionGainsDr0[6] = new DoubleSpinBox(Position0->LastRowLastCol(),"kd_x:",0,10,0.001,4);
+			pdPositionGainsDr0[7] = new DoubleSpinBox(Position0->NewRow(),"kp_y:",0,10,0.001,4);
+			pdPositionGainsDr0[8] = new DoubleSpinBox(Position0->LastRowLastCol(),"kd_y:",0,10,0.001,4);
+			
+			for(int i = 0; i < 6; i++){
+				*(pdPG0 + i) = pdPositionGainsDr0[i]->Value();
+			}
+
+		 
+		 GroupBox* Position1 = new GroupBox(GainsDr1Pos->LastRowLastCol(),"Pos Gains x4_1");
+		 	pdPositionGainsDr1[0] = new DoubleSpinBox(Position1->NewRow(),"a1:",0,10,0.001,4);
+			pdPositionGainsDr1[1] = new	DoubleSpinBox(Position1->LastRowLastCol(),"a2:",0,10,0.001,4);
+			pdPositionGainsDr1[2] = new	DoubleSpinBox(Position1->NewRow(),"a3:",0,10,0.001,4);
+			pdPositionGainsDr1[3] = new	DoubleSpinBox(Position1->LastRowLastCol(),"a4:",0,10,0.001,4);
+			pdPositionGainsDr1[4] = new	DoubleSpinBox(Position1->NewRow(),"a5:",0,10,0.001,4);
+			pdPositionGainsDr1[5] = new DoubleSpinBox(Position1->NewRow(),"kp_x:",0,10,0.001,4);
+			pdPositionGainsDr1[6] = new DoubleSpinBox(Position1->LastRowLastCol(),"kd_x:",0,10,0.001,4);
+			pdPositionGainsDr1[7] = new DoubleSpinBox(Position1->NewRow(),"kp_y:",0,10,0.001,4);
+			pdPositionGainsDr1[8] = new DoubleSpinBox(Position1->LastRowLastCol(),"kd_y:",0,10,0.001,4);
+			
+			for(int i = 0; i < 6; i++){
+				*(pdPG1 + i) = pdPositionGainsDr1[i]->Value();
+			}
+		 
+		 GroupBox* Position2 = new GroupBox(GainsDr1Pos->LastRowLastCol(),"Pos Gains x4_2");
+		 	pdPositionGainsDr2[0] = new DoubleSpinBox(Position2->NewRow(),"a1:",0,10,0.001,4);
+			pdPositionGainsDr2[1] = new DoubleSpinBox(Position2->LastRowLastCol(),"a2:",0,10,0.001,4);
+			pdPositionGainsDr2[2] = new DoubleSpinBox(Position2->NewRow(),"a3:",0,10,0.001,4);
+			pdPositionGainsDr2[3] = new DoubleSpinBox(Position2->LastRowLastCol(),"a4:",0,10,0.001,4);
+			pdPositionGainsDr2[4] = new DoubleSpinBox(Position2->NewRow(),"a5:",0,10,0.001,4);
+			pdPositionGainsDr2[5] = new DoubleSpinBox(Position2->NewRow(),"kp_x:",0,10,0.001,4);
+			pdPositionGainsDr2[6] = new DoubleSpinBox(Position2->LastRowLastCol(),"kd_x:",0,10,0.001,4);
+			pdPositionGainsDr2[7] = new DoubleSpinBox(Position2->NewRow(),"kp_y:",0,10,0.001,4);
+			pdPositionGainsDr2[8] = new DoubleSpinBox(Position2->LastRowLastCol(),"kd_y:",0,10,0.001,4);
+			
+			for(int i = 0; i < 6; i++){
+				*(pdPG2 + i) = pdPositionGainsDr2[i]->Value();
+			}
+	
+	
+		/************************************************************************************
+		 * 					Posiciones Home y Usuario de los drones							*
+		 ***********************************************************************************/
+		GroupBox* HomePosition0 = new GroupBox(GainsDr0Pos->NewRow(),"Home Positions for x4_0");
+		 	homePositionDr0[0] = new  	DoubleSpinBox(HomePosition0->NewRow(),"x:",0,10,0.001,4);
+		 	homePositionDr0[1] = new  	DoubleSpinBox(HomePosition0->LastRowLastCol(),"Y:",0,10,0.001,4);
+		 	
+		GroupBox* HomePosition1 = new GroupBox(GainsDr0Pos->LastRowLastCol(),"Home Positions for x4_1");
+		 	homePositionDr1[0] = new  	DoubleSpinBox(HomePosition1->NewRow(),"x:",0,10,0.001,4);
+		 	homePositionDr1[1] = new  	DoubleSpinBox(HomePosition1->LastRowLastCol(),"Y:",0,10,0.001,4);	
+		 		
+		GroupBox* HomePosition2 = new GroupBox(GainsDr0Pos->LastRowLastCol(),"Home Positions for x4_2");
+		 	homePositionDr2[0] = new  	DoubleSpinBox(HomePosition2->NewRow(),"x:",0,10,0.001,4);
+		 	homePositionDr2[1] = new  	DoubleSpinBox(HomePosition2->LastRowLastCol(),"Y:",0,10,0.001,4);	
+		 		
+		GroupBox* UserPosition0 = new GroupBox(GainsDr0Pos->NewRow(),"User Positions defined by User for x4_0");
+		 	userPositionDr0[0] = new  	DoubleSpinBox(UserPosition0->NewRow(),"x:",0,10,0.001,4);
+		 	userPositionDr0[1] = new  	DoubleSpinBox(UserPosition0->LastRowLastCol(),"Y:",0,10,0.001,4);
+		 			
+		GroupBox* UserPosition1 = new GroupBox(GainsDr0Pos->LastRowLastCol(),"User Positions defined by User for x4_1");
+		 	userPositionDr1[0] = new  	DoubleSpinBox(UserPosition1->NewRow(),"x:",0,10,0.001,4);
+		 	userPositionDr1[1] = new  	DoubleSpinBox(UserPosition1->LastRowLastCol(),"Y:",0,10,0.001,4);	
+		 		 
+		GroupBox* UserPosition2 = new GroupBox(GainsDr0Pos->LastRowLastCol(),"User Positions defined by User for x4_2");
+		 	userPositionDr2[0] = new  	DoubleSpinBox(UserPosition2->NewRow(),"x:",0,10,0.001,4);
+		    userPositionDr2[1] = new  	DoubleSpinBox(UserPosition2->LastRowLastCol(),"Y:",0,10,0.001,4);	
+		    
+		GroupBox* FreeNoUse = new GroupBox(GainsDr0Pos->NewRow(),"    ");
+			
+			for( int i = 0; i < 2 ; i ++ ){
+				*(ptrhomePosition0 + i ) = homePositionDr0[i]->Value();
+				*(ptrhomePosition1 + i ) = homePositionDr1[i]->Value();
+				*(ptrhomePosition2 + i ) = homePositionDr2[i]->Value();
+				*(ptruserPosition0 + i ) = userPositionDr0[i]->Value(); 
+				*(ptruserPosition1 + i ) = userPositionDr1[i]->Value();
+				*(ptruserPosition2 + i ) = userPositionDr2[i]->Value();
+			}
+				
+			
+			
+				
+
+		 /***********************************************************************************
+		  * 			Ganancias de Posición Drone0										*
+		  * ********************************************************************************/
+	
+
+  
+  
+ /*******************************************************************************************
+  * 			Consensus Tab																*
+  * ****************************************************************************************/ 
+	Tab *lawTab1 = new Tab(getFrameworkManager()->GetTabWidget(), "Consensus");
+	TabWidget *tabWidget1 = new TabWidget(lawTab1->NewRow(), "laws1");
+	LateralTab01 = new Tab(tabWidget1, "Setup");
+	LateralTab02 = new Tab(tabWidget1, "Graphes");
+	LateralTab03 = new Tab(tabWidget1, "GraphesPedro");
+  
+	GroupBox* DistanceRel=new GroupBox(LateralTab01->NewRow(),"Relative Distance Between Drones");
+
+    RelDistDrX[0] = new DoubleSpinBox(DistanceRel->NewRow(),"Distance X 1 -> 2"," m",-5,5,0.1,1,0);
+    RelDistDrY[0] = new DoubleSpinBox(DistanceRel->LastRowLastCol(),"Distance Y 1 -> 2"," m",-5,5,0.1,1,0);
+
+    RelDistDrX[1] = new DoubleSpinBox(DistanceRel->NewRow(),"Distance X 2 -> 3"," m",-5,5,0.1,1,0);
+    RelDistDrY[1] = new DoubleSpinBox(DistanceRel->LastRowLastCol(),"Distance Y 2 -> 3"," m",-5,5,0.1,1,0);
+
+    RelDistDrX[2] = new DoubleSpinBox(DistanceRel->NewRow(),"Distance X 3 -> 1"," m",-5,5,0.1,1,0);
+    RelDistDrY[2] = new DoubleSpinBox(DistanceRel->LastRowLastCol(),"Distance Y 3 -> 1"," m",-5,5,0.1,1,0);   
+    
+    
+   GroupBox* FormationForm = new GroupBox(LateralTab01->NewRow(),"Formation of the Fleet"); 
+   LineFormationButton = new PushButton(FormationForm -> NewRow(), "Line");
+   TriangleFormationButton = new PushButton(FormationForm -> NewRow(),"Triangle");
+   UserFormationButton = new PushButton(FormationForm -> NewRow(),"DefinedByUser");
+   
+   GroupBox* FreeSpace = new GroupBox(LateralTab01-> NewRow(),"   ");
+    
+  /* Tab *TabPFFP1 = new Tab(getFrameworkManager()->GetTabWidget(),"control laws2");
+  TabWidget *TabWidgetPFFP1 = new TabWidget(TabPFFP1->NewRow(),"laws2");
+  setupLawTab2 = new Tab(TabWidgetPFFP1,"My Tab 01");
+  graphLawTab2 = new Tab(TabWidgetPFFP1,"My Tab 02");
+  MyTab2 = new Tab(TabWidgetPFFP1,"My Tab 03");
+  
+*/
+}
+
+MultiAgentCore::~MultiAgentCore() {
+}
+/*const AhrsData *MultiAgentCore::GetOrientation(void) const {
+    //get yaw from vrpn
+	Quaternion vrpnQuaternion;
+    uavVrpn->GetQuaternion(vrpnQuaternion);
+
+    //get roll, pitch and w from imu
+    Quaternion ahrsQuaternion;
+    Vector3Df ahrsAngularSpeed;
+    GetDefaultOrientation()->GetQuaternionAndAngularRates(ahrsQuaternion, ahrsAngularSpeed);
+
+    Euler ahrsEuler=ahrsQuaternion.ToEuler();
+    ahrsEuler.yaw=vrpnQuaternion.ToEuler().yaw;
+    Quaternion mixQuaternion=ahrsEuler.ToQuaternion();
+
+    customOrientation->SetQuaternionAndAngularRates(mixQuaternion,ahrsAngularSpeed);
+
+    return customOrientation;
+}
+*/
+
+/*void MultiAgentCore::AltitudeValues(float &z,float &dz) const {
+    Vector3Df uav_pos,uav_vel;
+
+    uavVrpn->GetPosition(uav_pos);
+    uavVrpn->GetSpeed(uav_vel);
+    //z and dz must be in uav's frame
+    z=-uav_pos.z;
+    dz=-uav_vel.z;
+}
+*/
+
+/*const AhrsData *MultiAgentCore::GetReferenceOrientation(void) {
+    Vector2Df pos_err, vel_err; // in uav coordinate system
+    float yaw_ref;
+    Euler refAngles;
+
+    PositionValues(pos_err, vel_err, yaw_ref);
+
+    refAngles.yaw=yaw_ref;
+
+//    u_x->SetValues(pos_err.x, vel_err.x);
+//    u_x->Update(GetTime());
+//    refAngles.pitch=u_x->Output();
+
+//    u_y->SetValues(pos_err.y, vel_err.y);
+//    u_y->Update(GetTime());
+//    refAngles.roll=-u_y->Output();
+
+    customReferenceOrientation->SetQuaternionAndAngularRates(refAngles.ToQuaternion(),Vector3Df(0,0,0));
+
+    return customReferenceOrientation;
+}*/
+
+/*void MultiAgentCore::PositionValues(Vector2Df &pos_error,Vector2Df &vel_error,float &yaw_ref) {
+    Vector3Df uav_pos,uav_vel; // in VRPN coordinate system
+    Vector2Df uav_2Dpos,uav_2Dvel; // in VRPN coordinate system
+
+    uavVrpn->GetPosition(uav_pos);
+    uavVrpn->GetSpeed(uav_vel);
+
+    uav_pos.To2Dxy(uav_2Dpos);
+    uav_vel.To2Dxy(uav_2Dvel);
+
+}*/
+
+/*void MultiAgentCore::VectorRelDist(void)
+{
+
+	*(ptrDistRelX + 0) = Dr12Dr2x->Value();
+	*(ptrDistRelX + 1) = Dr22Dr3x->Value();
+	*(ptrDistRelX + 2) = Dr32Dr1x->Value();
+	
+	*(ptrDistRelY + 0) = Dr12Dr2y->Value();
+	*(ptrDistRelY + 1) = Dr22Dr3y->Value();
+	*(ptrDistRelY + 2) = Dr32Dr1y->Value();
+	
+}*/
+
+/*void MultiAgentCore::PrintVectorRelDist(void)
+{
+	cout << endl << "Distancias relativas en x: ";
+	for(int i = 0; i < 3; i++){
+		cout << *(ptrDistRelX + i) << "   ";
+	}
+	cout << endl << "Distancias relativas en y: ";
+	for(int i = 0; i < 3; i++){
+		cout << *(ptrDistRelY + i) << "   ";
+	}
+	cout << endl << endl;
+		
+}*/
+
+void MultiAgentCore::SignalEvent(Event_t event) {
+    UavStateMachine::SignalEvent(event);
+
+    switch(event) {
+    case Event_t::EmergencyStop:
+        message->SendMessage("EmergencyStop");
+        cout << "Emergency Stop has been required" << endl;
+        break;
+    case Event_t::TakingOff:
+        message->SendMessage("TakeOff");
+        behaviourMode=BehaviourMode_t::Default;
+        vrpnLost=false;
+        cout << "Taking Off has been required" << endl;
+        break;
+    case Event_t::StartLanding:
+		cout << "StartLanding has been required" << endl;
+        message->SendMessage("Landing");
+        break;
+    case Event_t::EnteringControlLoop:
+		//cout << "Entering ControlLoop has been required" << endl;
+        CheckMessages();
+        break;
+    case Event_t::EnteringFailSafeMode:
+		cout << "Entering Fail Safe Mode has been required" << endl;
+        //StopLaw();
+        break;
+    }
+}
+
+
+
+void MultiAgentCore::CheckMessages(void) {
+    char msg[64];
+    char src[64];
+    size_t src_size=sizeof(src);
+    while(message->RecvMessage(msg,sizeof(msg),TIME_NONBLOCK,src,&src_size)>0) {
+        //printf("%s %s\n",GetUav()->ObjectName().c_str(),src);
+        if(strcmp(src,GetUav()->ObjectName().c_str())!=0) {
+             if(strcmp(msg,"TakeOff")==0) {
+                Printf("TakeOff fleet\n");
+                cout << "TakeOff fleet\n";
+                TakeOff();
+            }
+            if(strcmp(msg,"Landing")==0) {
+                Printf("Landing fleet\n");
+                cout << "Landing fleet\n" ;
+                Land();
+            }
+            if(strcmp(msg,"EmergencyStop")==0) {
+                Printf("EmergencyStop fleet\n");
+                cout << "Emergency Stop fleet\n";
+                EmergencyStop();
+            }
+            if(strcmp(msg,"Behaviour1")==0){
+				//Printf("Behaviour1 Requested\n");
+				cout << "Check Message => Behaviour1 Requested\n";
+				Ch2Controller1Fnc();
+			}
+			if(strcmp(msg,"Behaviour2")==0){
+				//Printf("Behaviour2 Requested\n");
+				cout << "Check Message => Behaviour2 Requested \n";
+				Ch2Controller2Fnc();		
+			}
+			if(strcmp(msg,"Behaviour3")==0){
+				//Printf("Behaviour3 Requested\n");
+				cout << "Check Message => Behaviour3 Requested\n";
+				Ch2Controller3Fnc();
+			}
+			if(strcmp(msg,"Behaviour4")==0){
+				//Printf("Behaviour4 Requested\n");
+				cout << "Check Message => Behaviour4 Requested \n";	
+				Ch2Controller4Fnc();	
+			}
+			
+        }
+    }
+}
+
+void MultiAgentCore::ExtraSecurityCheck(void) {
+    if (!vrpnLost && behaviourMode!=BehaviourMode_t::Default) {
+        if (!uavVrpn->IsTracked(500)) {
+            Thread::Err("Optitrack, uav lost\n");
+            vrpnLost=true;
+            EnterFailSafeMode();
+            Land();
+        }
+    }
+}
+
+void MultiAgentCore::ExtraCheckJoystick(void) {
+	/*** Do not use corss, start nor select buttons!! *******/
+	// 0: "start"	    // 1: "select"	    // 2: "square"		// 3: "triangle"
+    // 4: "circle"	    // 5: "cross";	    // 6: "left 1"	    // 7: "left 2"
+    // 8: "left 3"	    // 9: "right 1"	    //10: "right 2"	    //11: "right 3"
+    //12: "up"	    	//13: "down"	    //14: "left"	    //15: "right"
+
+	//Se utilizaran los botones superiores.
+	if(GetJoystick()->IsButtonPressed(12) && (behaviourMode != BehaviourMode_t::Behaviour1)){
+		cout << "Joy => Se pide acceso al comportamiento 1 \n";
+		Ch2Controller1Fnc();
+	    message->SendMessage("Behaviour1");
+		}
+
+	if(GetJoystick()->IsButtonPressed(15) && (behaviourMode != BehaviourMode_t::Behaviour2)){
+		cout << "Joy => Se pide acceso al comportamiento 2\n";
+		Ch2Controller2Fnc();
+		message->SendMessage("Behaviour2");
+		}
+	
+	if(GetJoystick()->IsButtonPressed(13) && (behaviourMode != BehaviourMode_t::Behaviour3)){
+		cout << "Joy => Se pide acceso al comportamiento 3\n";
+		Ch2Controller3Fnc();
+		message->SendMessage("Behaviour3");
+		}
+	
+	if(GetJoystick()->IsButtonPressed(14) && (behaviourMode != BehaviourMode_t::Behaviour4)){
+		cout << "Joy => Se pide acceso al comportamiento 4\n";
+		Ch2Controller4Fnc();
+		message->SendMessage("Behaviour4");
+		}
+}
+
+
+void MultiAgentCore::ExtraCheckPushButton(void){
+	if(StartBehaviour1Button -> Clicked() && (behaviourMode != BehaviourMode_t::Behaviour1)){
+		cout << "Push => Se pide acceso al comportamiento 1\n ";
+		Ch2Controller1Fnc();
+		message->SendMessage("Behaviour1");
+
+	}
+	if(StartBehaviour2Button -> Clicked() && (behaviourMode != BehaviourMode_t::Behaviour2)){
+		cout << "Push => Se pide acceso al comportamiento 2\n ";
+		Ch2Controller2Fnc();
+		message->SendMessage("Behaviour2");
+
+	}
+	if(StartBehaviour3Button -> Clicked() && (behaviourMode != BehaviourMode_t::Behaviour3)){
+		cout << "Push => Se pide acceso al comportamiento 3 \n";
+		Ch2Controller3Fnc();
+		message->SendMessage("Behaviour3");
+		
+	}
+	if(StartBehaviour4Button -> Clicked() && (behaviourMode != BehaviourMode_t::Behaviour4)){
+		cout << "Push => Se pide acceso al comportamiento 4 \n";
+		Ch2Controller4Fnc();
+		message->SendMessage("Behaviour4");
+		
+	}
+	
+		
+}
+
+
+void MultiAgentCore::LagrangianMatrix(){
+	cout << "Impresión del Lagrangiano" << endl<< endl;
+		for(int i = 0; i < 9 ; i++)
+		{
+			cout << *(PtrLaplacian  + i) << "    ";
+		}
+}
+
+void MultiAgentCore::StatesDrones(void){
+	cout << "Your are BEHAVIOUR1" << endl;
+	cout << "Behaviour1 ==> Se encargará de generar los estados de la forma [x0, x1, x2]^T, [y0, y1, y2]^T, [z0, z1, z2]^T" << endl << endl;
+	//Vector3Df positionAllDrones[3];
+	//Vector3df States;
+	for( int i = 0; i<3; i++){
+		ArrayDrones[i]->GetPosition(PositionAllDrones[i]);
+		//*PointerPositionAllDrones = &PositionAllDrones[i];
+		*(StateX + i) = PositionAllDrones[i].x;
+		*(StateY + i) = PositionAllDrones[i].y;
+		*(StateZ + i) = PositionAllDrones[i].z;
+		cout << "Pos Drone " << i << " : x = " << PositionAllDrones[i].x << " y = " << PositionAllDrones[i].y << " z = " << PositionAllDrones[i].z << endl;
+		//cout << "Pos Drone " << i << " : x = " << *(PointerPositionAllDrones[i]->x) << " y = " << PointerPositionAllDrones[i].y << " z = " << PointerPositionAllDrones[i].z << endl;
+		}
+		
+	cout << "Los vectores de estados son: " << endl;
+	for (int i = 0; i<3 ; i++)
+	{
+	cout << *(StateX + i) << "     " << *(StateY + i) << "   " << *(StateZ + i) << endl;			
+			
+		}
+		
+}
+
+// To change to Behaviour1 -> Home
+void MultiAgentCore::Ch2Controller1Fnc(void) {
+    if (SetTorqueMode(TorqueMode_t::Custom)) {
+        behaviourMode=BehaviourMode_t::Behaviour1;
+        Thread::Info("Homming ====>> OK\n");
+    } else {
+        Thread::Warn("Homming ====>> FAILED\n");
+    }
+
+}
+
+// To chage to Behaviour2 -> Position set by user
+void MultiAgentCore::Ch2Controller2Fnc(void){
+    if (SetTorqueMode(TorqueMode_t::Custom)) {
+        behaviourMode=BehaviourMode_t::Behaviour2;
+        Thread::Info("User sets position =====>> OK \n");
+    } else {
+        Thread::Warn("User sets position =====>> FAILED \n");
+    }
+}
+
+// To change to Behaviour3 -> Consensus 
+void MultiAgentCore::Ch2Controller3Fnc(void) {
+    if (SetTorqueMode(TorqueMode_t::Custom)) {
+        behaviourMode=BehaviourMode_t::Behaviour3;
+        Thread::Info("Consensus ====>> OK\n");
+    } else {
+        Thread::Warn("Consensus ====>> FAILED \n");
+    }
+
+}
+
+//void UAVpffp::StartTracking(void){
+void MultiAgentCore::Ch2Controller4Fnc(void){
+    if (SetTorqueMode(TorqueMode_t::Custom)) {
+        behaviourMode=BehaviourMode_t::Behaviour4;
+        Thread::Info("Behaviour4 Not defined ====>> OK \n");
+    } else {
+        Thread::Warn("Behaviour4 Not defined ====>> FAILED\n");
+    }
+}
+
+
+void MultiAgentCore::ComputeCustomTorques(Euler &torques) {
+    Euler error,errorw;
+    Euler refAngles;
+	Euler torque;
+    Quaternion refQuaternion;
+    Vector3Df referenceOmega;
+    Vector3Df uav_pos,uav_vel;
+    Quaternion ahrsQuaternion;
+    Quaternion vrpnQuaternion;
+    Vector3Df ahrsAngularSpeed,refAngularSpeed;
+    //GetDefaultOrientation()->GetQuaternionAndAngularRates(ahrsQuaternion, ahrsAngularSpeed); // IMU en quaternions \omega
+    //Euler ahrsEuler=ahrsQuaternion.ToEuler();							//=========> Crea un objeto de la clase Euler le asigna el valor de un cuaternio convertido
+ 																		//		   		a ángulos de Euler, pero todo sigue siendo de la imu								
+    //ahrsEuler.yaw=vrpnEuler.yaw;		// lee yaw del optitrack		=========> toma el objeto ahrsEuler y en la entrada asociada a Yaw, reescribe el valor de 
+    																	//				el ángulo de yaw pero ahora el estimado por el optitrack, lo cual genera un
+    																	//			    ángulo que no deriva.
+    //Quaternion mixQuaternion=ahrsEuler.ToQuaternion();					//=========> Una vez que se tiene la orientación como combinación de la imu y del optitrack, entonces
+    															  		//				cambian a cuaterniones. 
+	//Euler mixEuler=mixQuaternion.ToEuler();								//=========> Cambian otra vez la representación de cuaterninones  a ángulos de Euler, para tener otro 
+    																	//				objeto redundante. */						
+    //Get reference roll, pitch and w from joystick
+    
+    
+        //get yaw from vrpn
+		
+    uavVrpn->GetQuaternion(vrpnQuaternion);
+
+    //get roll, pitch and w from imu
+    //Quaternion ahrsQuaternion;
+    //Vector3Df ahrsAngularSpeed;
+    GetDefaultOrientation()->GetQuaternionAndAngularRates(ahrsQuaternion, ahrsAngularSpeed);
+
+    Euler ahrsEuler=ahrsQuaternion.ToEuler();
+    ahrsEuler.yaw=vrpnQuaternion.ToEuler().yaw;
+    Quaternion mixQuaternion=ahrsEuler.ToQuaternion();
+
+    customOrientation->SetQuaternionAndAngularRates(mixQuaternion,ahrsAngularSpeed);
+    
+    
+    
+    
+    
+    
+    
+    GetDefaultReferenceOrientation()->GetQuaternionAndAngularRates(refQuaternion,referenceOmega); // Joystick
+    refAngles=refQuaternion.ToEuler();
+    
+	//	In this section we set the customOrientationAndAngularRates from the Quadrotor and also the data from the Joystick is read and
+	//	is placed in vectorial form, and would be ready to be read by the controller programs. 
+	
+	//customOrientation->SetQuaternionAndAngularRates(mixQuaternion,ahrsAngularSpeed);
+	customReferenceOrientation->SetQuaternionAndAngularRates(refAngles.ToQuaternion(),Vector3Df(0,0,0));	
+	//customReferenceOrientation->SetQuaternionAndAngularRates( refAngles.ToQuaternion(), referenceOmega));	// This is if you want to send the desired angular rate
+	uavVrpn->GetPosition(uav_pos);
+    uavVrpn->GetSpeed(uav_vel);	
+    std::cout<<uav_pos.x<<"   "<<uav_pos.y<<"    "<<uav_pos.z<<std::endl;
+    
+    StatesDrones();
+    LagrangianMatrix();
+    //VectorRelDist();
+    //PrintVectorRelDist();
+																									
+
+	/********************************
+	 * 			For Homing		 	*
+	 * ******************************/
+    if(behaviourMode == BehaviourMode_t::Behaviour1) 
+    {
+		Home -> SetValues(customOrientation, customReferenceOrientation, uav_pos, uav_vel);
+		Home -> Update(GetTime());
+		
+		torque.roll 	= Home -> Output( 0 );
+		torque.pitch	= Home -> Output( 1 );
+		torque.yaw 	= Home -> Output( 2 );
+    }
+
+
+	/**********************************
+	 * 		User Position			  *
+	 * ********************************/
+    if(behaviourMode == BehaviourMode_t::Behaviour2)  // Position Control
+    {
+		UserPosition -> SetValues(customOrientation, customReferenceOrientation, uav_pos, uav_vel);
+		UserPosition -> Update(GetTime());
+		
+		torque.roll    = UserPosition -> Output(0);
+		torque.pitch   = UserPosition -> Output(1);
+		torque.yaw	   = UserPosition -> Output(2);
+
+
+    }
+    
+    /************************************
+     * 		Consensus					*
+     * **********************************/
+    if(behaviourMode == BehaviourMode_t::Behaviour3)
+    {
+		Consensus -> SetValues(customOrientation, customReferenceOrientation, &StateX[0], &StateY[0], &Laplacian[0][0], &IdDrone);
+		Consensus -> Update(GetTime());
+	}
+	
+	if(behaviourMode == BehaviourMode_t::Behaviour4)
+    {
+		cout << "En construccion" << endl;
+	}
+  
+	/********************************************
+	 * 		Sending the Output Torques to 		*
+	 * 			The		Motors					*
+	 * ******************************************/
+    torques.roll	= torque.roll;
+	torques.pitch	= torque.pitch;
+	torques.yaw 	= torque.yaw;
+
+
+ /*   
+    //PDpffp->SetValues(customOrientation,customReferenceOrientation);
+    // law->SetValues(customOrientation,customReferenceOrientation);
+    //MyController -> SetValues( customOrientation, customReferenceOrientation );
+    
+    //PDpffp->Update(GetTime());
+    // law->Update(GetTime());
+    //MyController -> Update(GetTime());
+    
+	//torques.roll	= PDpffp -> Output(0);
+	//torques.pitch	= PDpffp -> Output(1);
+	//torques.yaw 	= PDpffp -> Output(2);*/
+
+}
+
+	
+	
+	
+	
+
+	
+	

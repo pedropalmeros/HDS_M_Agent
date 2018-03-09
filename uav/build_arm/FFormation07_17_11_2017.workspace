@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CodeLite_Workspace Name="FFormation07_17_11_2017">
+	<Project Name="FFormation07_17_11_2017_nrt" Path="FFormation07_17_11_2017_nrt.project" Active="No"/>
+	<Project Name="FFormation07_17_11_2017_rt" Path="FFormation07_17_11_2017_rt.project" Active="No"/>
+	<BuildMatrix>
+		<WorkspaceConfiguration Name="NoConfig" Selected="yes">
+			<Project Name="rebuild_cache" ConfigName="NoConfig"/>
+			<Project Name="edit_cache" ConfigName="NoConfig"/>
+			<Project Name="FFormation07_17_11_2017_nrt" ConfigName="NoConfig"/>
+			<Project Name="FFormation07_17_11_2017_rt" ConfigName="NoConfig"/>
+		</WorkspaceConfiguration>
+	</BuildMatrix>
+</CodeLite_Workspace>
